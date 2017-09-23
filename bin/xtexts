@@ -1,0 +1,171 @@
+#!/usr/bin/env node
+const fs = require( 'fs' );
+const glob = require( 'glob' );
+const yargs = require( 'yargs' );
+
+const format = require( '../src/formatters' );
+const { parseFile, parsePickup } = require( '../src/parsers' );
+const defaultPickups = require( '../src/default-pickups' );
+const reEsc = require( '../src/regexp-escape' );
+
+function chrunchFile ( fn, argv ) {
+  const quickFilter = argv.quickFilter;
+  const ids = argv.pickups.map( d => reEsc( d.id ) );
+  return new Promise( ( resolve, reject ) => {
+    fs.readFile( fn, 'utf8', ( err, raw ) => {
+      if ( err ) {
+        reject({
+          message: `Unable to read file: "${ fn }"`,
+          filename: fn
+        });
+      }
+      else if ( quickFilter.test( raw ) ) {
+        try {
+          resolve( parseFile( raw, ids, fn ) );
+        }
+        catch ( x ) {
+          reject({
+            message: `Unable to parse file: "${ fn }"\n${ x.message }`,
+            filename: fn
+          });
+        }
+      }
+      else {
+        resolve( [] );
+      }
+    });
+  });
+}
+
+
+// allow normal paths as well ass glob style paths
+function normPath ( path ) {
+  // only "." or ending in a slash
+  // does it not contain a "*" or known js extension
+  // ... append .js glob syntax
+  if ( /(^\.$|\/$)/.test( path ) || !/(\*|\.(es6?|mjs|jsx?))/.test( path ) ) {
+    return `${ path }/**/*.js`;
+  }
+  return path;
+}
+
+
+function crunchAllFiles ( argv ) {
+  return new Promise( ( resolve, reject ) => {
+    argv.quickFilter = new RegExp( `\\b(${ argv.pickups.map( d => reEsc( d.id ) ).join( '|' ) })\\b` );
+    glob( normPath( argv.path ), { nodir: true }, ( err, files ) => {
+      if ( err ) {
+        reject( err );
+      }
+      else {
+        // files is an array of filenames.
+        // If the `nonull` option is set, and nothing
+        // was found, then files is ["**/*.js"]
+        // er is an error object or null.
+        const promise = Promise.all( files.map( fn => chrunchFile( fn, argv ) ) )
+          .then( output => output.reduce( ( a, b ) => a.concat( b ), [] ) );
+        resolve( promise );
+      }
+    });
+  });
+}
+
+
+function extractStrings ( argv ) {
+  argv.pickups = argv.k.map( parsePickup );
+  crunchAllFiles( argv )
+    .then( messages => {
+      if ( argv.format === 'gettext' ) {
+        console.log( format.po( messages ) );
+      }
+      else if ( argv.format === 'json' ) {
+        console.log( format.JSON( messages ) );
+      }
+      else if ( argv.format === 'csv' ) {
+        console.log( format.CSV( messages ) );
+      }
+    })
+    .catch( err => {
+      console.log( err.message );
+      process.exit( 1 );
+    });
+}
+
+
+function extractUsage ( argv ) {
+  argv.pickups = argv.k.map( parsePickup );
+  crunchAllFiles( argv )
+    .then( messages => {
+      console.log( format.JSONobj( messages ) );
+    })
+    .catch( err => {
+      console.log( err.message );
+      process.exit( 1 );
+    });
+}
+
+function testStrings ( argv ) {
+  argv.pickups = argv.k.map( parsePickup );
+  crunchAllFiles( argv )
+    .then( messages => {
+      const errors = messages.filter( d => !d.text );
+      if ( errors.length ) {
+        console.log( 'Failed to pull translation strings:' );
+        errors.forEach( d => {
+          console.log( `  ${ d.file }:${ d.line }` );
+        });
+        process.exit( 1 );
+      }
+    });
+}
+
+yargs
+  .command({
+    command: 'extract <path>',
+    desc: 'Extract translatable texts from a project',
+    builder: ( _yargs ) => {
+      return _yargs
+        .option( 'format', {
+          describe: 'Output format of the translation strings',
+          choices: [ 'json', 'csv', 'gettext' ],
+          default: 'gettext'
+        })
+        .option( 'keyword', {
+          alias: 'k',
+          describe: 'Specify a keywordspec as an keyword to be looked for.',
+          default: defaultPickups
+        });
+    },
+    handler: extractStrings
+  })
+  .command({
+    command: 'use <path>',
+    desc: 'Dump a JSON dictionary of usage from the project',
+    builder: ( _yargs ) => {
+      return _yargs
+        .option( 'keyword', {
+          alias: 'k',
+          describe: 'Specify a keywordspec as an keyword to be looked for.',
+          default: defaultPickups
+        });
+    },
+    handler: extractUsage
+  })
+  .command({
+    command: 'test <path>',
+    desc: 'Test if any translations are broken',
+    builder: ( _yargs ) => {
+      return _yargs
+        .option( 'keyword', {
+          alias: 'k',
+          describe: 'Specify a keywordspec as an keyword to be looked for.',
+          default: defaultPickups
+        });
+    },
+    handler: testStrings
+  })
+  // provide a minimum demand and a minimum demand message
+  .demandCommand( 1, 'You need at least one command before moving on' )
+  .help()
+  .argv;
+
