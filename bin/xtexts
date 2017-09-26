@@ -10,7 +10,6 @@ const reEsc = require( '../src/regexp-escape' );
 
 function chrunchFile ( fn, argv ) {
   const quickFilter = argv.quickFilter;
-  const ids = argv.pickups.map( d => reEsc( d.id ) );
   return new Promise( ( resolve, reject ) => {
     fs.readFile( fn, 'utf8', ( err, raw ) => {
       if ( err ) {
@@ -21,7 +20,7 @@ function chrunchFile ( fn, argv ) {
       }
       else if ( quickFilter.test( raw ) ) {
         try {
-          resolve( parseFile( raw, ids, fn ) );
+          resolve( parseFile( raw, argv.pickups, fn ) );
         }
         catch ( x ) {
           reject({
@@ -52,7 +51,8 @@ function normPath ( path ) {
 
 function crunchAllFiles ( argv ) {
   return new Promise( ( resolve, reject ) => {
-    argv.quickFilter = new RegExp( `\\b(${ argv.pickups.map( d => reEsc( d.id ) ).join( '|' ) })\\b` );
+    const ids = argv.pickups.map( d => reEsc( d.id ) );
+    argv.quickFilter = new RegExp( `\\b(${ ids.join( '|' ) })\\b` );
     glob( normPath( argv.path ), { nodir: true }, ( err, files ) => {
       if ( err ) {
         reject( err );

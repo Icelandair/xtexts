@@ -1,7 +1,7 @@
 const babylon = require( 'babylon' ); // https://github.com/babel/babylon
-const defaultPickups = require( './default-pickups' );
+const defaultPickups = require( './default-pickups' ).map( parsePickup );
 
-function grabStrings ( tokens, baseIndex ) {
+function grabStrings ( tokens, baseIndex, pickup ) {
   // the basic idea here is that until we find the end of the function
   // we concatinate strings as we find them. When we hit something that
   // isn't a string or allowed operator (paren, comma, plus) we stop adding
@@ -25,6 +25,7 @@ function grabStrings ( tokens, baseIndex ) {
     }
     else if ( type.label === '+' ) {
       // can ignore this token
+      // it is special cased because "a" + "b" == "ab"
     }
     else if ( type.label === ',' ) {
       // create a new string in the chain
@@ -42,18 +43,25 @@ function grabStrings ( tokens, baseIndex ) {
     }
     else {
       // it's something else, like a variable or some other operator
-      // create a new string in the chain? throw error?
-      strings.push( '' );
+      // we ignore it because the pickups may define arbitrary argument
+      strings[strings.length - 1] = null;
     }
     index++;
   }
-
-  const numAllowedStrings = ( tokens[baseIndex].value === 'ngetText' ) ? 2 : 1;
-  return [ index, strings.slice( 0, numAllowedStrings ) ];
+  // pull the expected arguments from the list of strings
+  // all arguments must be emitted because we want test
+  // to signal argument failure
+  const terms = [];
+  Array.from( pickup.useArgs )
+    .sort( ( a, b ) => a - b )
+    .map( idx => {
+      terms.push( strings[idx] == null ? '' : strings[idx] );
+    });
+  return [ index, terms ];
 }
 
 
-function parseFile ( raw, functionNames = defaultPickups, fn = '???' ) {
+function parseFile ( raw, pickups = defaultPickups, fn = '???' ) {
   const messages = [];
   const ast = babylon.parse( raw, {
     sourceFilename: fn,
@@ -71,26 +79,26 @@ function parseFile ( raw, functionNames = defaultPickups, fn = '???' ) {
     ]
   });
   // index all tokens
-  ast.tokens.forEach( ( token, i ) => {
-    token.index = i;
-  });
+  ast.tokens.forEach( ( token, i ) => { token.index = i; });
+  // lookup table of pickups & args
+  const ids = pickups.reduce( ( r, d ) => { r[d.id] = d; return r; }, {});
   // seek function names that exist in our whitelist
   let index = 0;
   while ( index < ast.tokens.length ) {
     const token = ast.tokens[index];
     const type = token.type;
     // found the function
-    if ( type.label === 'name' && type.startsExpr && functionNames.indexOf( token.value ) !== -1 ) {
+    if ( type.label === 'name' && type.startsExpr && token.value in ids ) {
       // is it being called
       if ( ast.tokens[index + 1].type.label === '(' ) {
-        const [ idx, strings ] = grabStrings( ast.tokens, index );
+        const [ idx, strings ] = grabStrings( ast.tokens, index, ids[token.value] );
         const pos = ast.tokens[index].loc.start;
-        // console.log( idx, strings, pos );
-        // emit gettext fmt
-        messages.push({
-          text: strings[0],
-          file: fn,
-          line: pos.line
+        strings.forEach( string => {
+          messages.push({
+            text: string == null ? '' : string,
+            file: fn,
+            line: pos.line
+          });
         });
         index = idx;
       }
