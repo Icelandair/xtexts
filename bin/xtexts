@@ -7,6 +7,8 @@ const format = require( '../src/formatters' );
 const { parseFile, parsePickup } = require( '../src/parsers' );
 const defaultPickups = require( '../src/default-pickups' );
 const reEsc = require( '../src/regexp-escape' );
+const list = a => ( Array.isArray( a ) ? a : [ a ] );
+
 
 function chrunchFile ( fn, argv ) {
   const quickFilter = argv.quickFilter;
@@ -72,7 +74,7 @@ function crunchAllFiles ( argv ) {
 
 
 function extractStrings ( argv ) {
-  argv.pickups = argv.k.map( parsePickup );
+  argv.pickups = list( argv.k ).map( parsePickup );
   crunchAllFiles( argv )
     .then( messages => {
       if ( argv.format === 'gettext' ) {
@@ -93,7 +95,7 @@ function extractStrings ( argv ) {
 
 
 function extractUsage ( argv ) {
-  argv.pickups = argv.k.map( parsePickup );
+  argv.pickups = list( argv.k ).map( parsePickup );
   crunchAllFiles( argv )
     .then( messages => {
       console.log( format.JSONobj( messages ) );
@@ -105,7 +107,7 @@ function extractUsage ( argv ) {
 }
 
 function testStrings ( argv ) {
-  argv.pickups = argv.k.map( parsePickup );
+  argv.pickups = list( argv.k ).map( parsePickup );
   crunchAllFiles( argv )
     .then( messages => {
       const errors = messages.filter( d => !d.text );
