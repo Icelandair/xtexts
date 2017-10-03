@@ -72,6 +72,14 @@ tape( 'parseFile funtionality', t => {
     'picks up terms embedded in JSX syntax'
   );
 
+  t.deepEqual(
+    xtext.parseFile( `
+      foo.hasOwnProperty('bar')
+    ` ),
+    [ ],
+    'must not crash dealing with prototype functions'
+  );
+
   t.end();
 });
 

@@ -88,7 +88,7 @@ function parseFile ( raw, pickups = defaultPickups, fn = '???' ) {
     const token = ast.tokens[index];
     const type = token.type;
     // found the function
-    if ( type.label === 'name' && type.startsExpr && token.value in ids ) {
+    if ( type.label === 'name' && type.startsExpr && ids.hasOwnProperty( token.value ) ) {
       // is it being called
       if ( ast.tokens[index + 1].type.label === '(' ) {
         const [ idx, strings ] = grabStrings( ast.tokens, index, ids[token.value] );
