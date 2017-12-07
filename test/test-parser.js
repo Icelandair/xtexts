@@ -3,6 +3,7 @@ const xtext = require( '../' );
 
 tape( 'parseFile funtionality', t => {
   t.equal( typeof xtext.parseFile, 'function', 'xtext.parseFile is a function' );
+
   t.deepEqual(
     xtext.parseFile( `
       function testFn () {
@@ -11,6 +12,38 @@ tape( 'parseFile funtionality', t => {
     ` ),
     [ { text: 'translatable', file: '???', line: 3 } ],
     'basic parsing'
+  );
+
+  t.deepEqual(
+    xtext.parseFile( `
+      function _ ( messageId ) {
+        return "This is my translation function!"
+      }
+    ` ),
+    [],
+    'must not pick up function declarations'
+  );
+
+  t.deepEqual(
+    xtext.parseFile( `
+      function getText ( messageId ) {
+        return 'A translation';
+      }
+    ` ),
+    [],
+    'must not pick up function declarations'
+  );
+
+  t.deepEqual(
+    xtext.parseFile( `
+      class German extends Language {
+        getText (messageId) {
+          return 'A translation'
+        }
+      }
+    ` ),
+    [],
+    'must not pick up class methods declarations'
   );
 
   t.deepEqual(

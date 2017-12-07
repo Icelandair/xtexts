@@ -90,7 +90,8 @@ function parseFile ( raw, pickups = defaultPickups, fn = '???' ) {
     // found the function
     if ( type.label === 'name' && type.startsExpr && ids.hasOwnProperty( token.value ) ) {
       // is it being called
-      if ( ast.tokens[index + 1].type.label === '(' ) {
+      if ( ( ast.tokens[index + 1] && ast.tokens[index + 1].type.label === '(' ) &&
+           ( !ast.tokens[index - 1] || ast.tokens[index - 1].type.label !== 'function' ) ) {
         const [ idx, strings ] = grabStrings( ast.tokens, index, ids[token.value] );
         const pos = ast.tokens[index].loc.start;
         strings.forEach( string => {
