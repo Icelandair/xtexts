@@ -67,15 +67,28 @@ function parseFile ( raw, pickups = defaultPickups, fn = '???' ) {
     sourceFilename: fn,
     sourceType: 'module',
     plugins: [
-      'jsx',
-      'doExpressions',
-      'objectRestSpread',
-      'decorators',
-      'classProperties',
-      'classPrivateProperties',
+      'asyncGenerators',
+      'bigInt',
       'classPrivateMethods',
-      'exportExtensions',
-      'asyncGenerators'
+      'classPrivateProperties',
+      'classProperties',
+      'decorators',
+      'decorators2',
+      'doExpressions',
+      'dynamicImport',
+      'exportDefaultFrom',
+      'exportNamespaceFrom',
+      'functionBind',
+      'functionSent',
+      'importMeta',
+      'jsx',
+      'nullishCoalescingOperator',
+      'numericSeparator',
+      'objectRestSpread',
+      'optionalCatchBinding',
+      'optionalChaining',
+      'pipelineOperator',
+      'throwExpressions'
     ]
   });
   // index all tokens
