@@ -1,4 +1,4 @@
-const babylon = require( 'babylon' ); // https://github.com/babel/babylon
+const babylon = require( '@babel/parser' ); // https://github.com/babel/babylon
 const defaultPickups = require( './default-pickups' ).map( parsePickup );
 
 function grabStrings ( tokens, baseIndex, pickup ) {
@@ -66,13 +66,14 @@ function parseFile ( raw, pickups = defaultPickups, fn = '???' ) {
   const ast = babylon.parse( raw, {
     sourceFilename: fn,
     sourceType: 'module',
+    tokens: true,
     plugins: [
       'asyncGenerators',
       'bigInt',
       'classPrivateMethods',
       'classPrivateProperties',
       'classProperties',
-      'decorators',
+      'decorators-legacy',
       'decorators2',
       'doExpressions',
       'dynamicImport',
@@ -87,8 +88,9 @@ function parseFile ( raw, pickups = defaultPickups, fn = '???' ) {
       'objectRestSpread',
       'optionalCatchBinding',
       'optionalChaining',
-      'pipelineOperator',
-      'throwExpressions'
+      ['pipelineOperator', { 'proposal': 'minimal' }],
+      'throwExpressions',
+      'typescript'
     ]
   });
   // index all tokens

@@ -107,6 +107,18 @@ tape( 'parseFile funtionality', t => {
 
   t.deepEqual(
     xtext.parseFile( `
+      import React from 'react';
+      interface Props { text:string}
+      export default function SomeComponent (props) {
+        return (<div>{_('translatable')}</div>);
+      }
+    ` ),
+    [ { text: 'translatable', file: '???', line: 5 } ],
+    'picks up terms embedded in SX syntax'
+  );
+
+  t.deepEqual(
+    xtext.parseFile( `
       foo.hasOwnProperty('bar')
     ` ),
     [ ],
